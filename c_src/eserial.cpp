@@ -1,10 +1,7 @@
-//-----------------------------------------------------------------
-// Copyright (c) 2016, Invent Technology. All Rights Reserved.
-// Author: Vozzhenikov Roman, vzroman@gmail.com
-//-----------------------------------------------------------------
+
 #include <stdlib.h>
 #include <errno.h>
-#include <stdio.h> 
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <string>
@@ -18,9 +15,7 @@
 
 using namespace std;
 
-/*
- * 
- */
+
 int init_port(string portname, int baudRate, int parity, int stopBits, int byteSize);
 int from_to(int from,int to);
 void reply(int erts, string result);
@@ -30,7 +25,7 @@ int main(int argc, char** argv) {
     string portname="/dev/ttyUSB0";
     int baudRate=9600;
     int parity = 0;
-    int stopBits = 1; 
+    int stopBits = 1;
     int byteSize = 8;
     for (int i = 0; i < argc; i++) {
         if (strcmp("-port", argv[i]) == 0) {
@@ -49,12 +44,12 @@ int main(int argc, char** argv) {
             if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined bytesize"); return 0; }
             byteSize = atoi(argv[i + 1]);
         }
-    } 
+    }
     //----------------Serial port init-------------------------
     int port=init_port(portname, baudRate, parity, stopBits, byteSize);
     if (port == -1) { reply(STDOUT_FILENO, "ERROR: can not open port"); return 0; }
     reply(STDOUT_FILENO, "OK");
-    
+
     //------select for erts and serial-------------------------
     fd_set readfs;
     FD_ZERO(&readfs);
@@ -62,22 +57,22 @@ int main(int argc, char** argv) {
     maxfd = (STDIN_FILENO > port ? STDIN_FILENO : port) + 1;
     struct timeval Timeout;
     int result=1;
-    
-    
+
+
     //----------LOOP-------------------------
     while (result) {
-        FD_SET(STDIN_FILENO,&readfs);           
+        FD_SET(STDIN_FILENO,&readfs);
         FD_SET(port,&readfs);
         Timeout.tv_usec = 0;
         Timeout.tv_sec  = 2;
-        
+
         select(maxfd, &readfs, NULL, NULL, &Timeout);
         if (FD_ISSET(STDIN_FILENO,&readfs)){
             result=from_to(STDIN_FILENO,port);
         }else if (FD_ISSET(port,&readfs)){
-            result=from_to(port,STDOUT_FILENO);   
+            result=from_to(port,STDOUT_FILENO);
         }
-    }     
+    }
     return 0;
 }
 
@@ -104,16 +99,16 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
     struct termios tio;
     int port = open(portname.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
     if (port==-1){ return -1; }
-    
+
     bzero(&tio, sizeof(tio));
-    
+
     //----wait lock for 1 byte-----
     tio.c_cc[VTIME] = 0;
     tio.c_cc[VMIN] = 1;
-    
+
     //-----no owner change, CREAD?
     tio.c_cflag = CLOCAL | CREAD;
-    
+
     //--------baudrate------------
     switch (baudRate) {
 	case 50: tio.c_cflag |= B50; break;
@@ -147,7 +142,7 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
 	case 4000000: tio.c_cflag |= B4000000; break;
 	default: return -1;
     }
-    
+
     //-------bytesize--------------
     switch (byteSize) {
 	case 5: tio.c_cflag |= CS5; break;
@@ -156,18 +151,18 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
 	case 8: tio.c_cflag |= CS8; break;
 	default: return -1;
     }
-    
+
     switch (parity) {
 	case 0:tio.c_iflag |= IGNPAR; break;
 	case 1:	tio.c_cflag |= PARENB; tio.c_iflag |= INPCK | ISTRIP; break;
 	case 2: tio.c_cflag |= PARENB | PARODD;	tio.c_iflag |= INPCK | ISTRIP; break;
     }
-    
+
     switch (stopBits)	{
 	case 1: break;
 	case 2: tio.c_cflag |= CSTOPB; break;
     }
-    
+
     tcflush(port, TCIFLUSH);
     tcsetattr(port, TCSANOW, &tio);
     return port;

@@ -22,6 +22,8 @@
 ]).
 
 %%-------API-------------------
+open(Port,Options) when is_binary(Port)->
+  open(binary_to_list( Port ), Options);
 open(Port,Options)->
   Default=[
     {baudrate,9600},
@@ -29,9 +31,8 @@ open(Port,Options)->
     {stopbits,1},
     {bytesize,8}
   ],
-  PortName=binary_to_list(Port),
-  Program=create_program_file(PortName),
-  Cmd=build_cmd(Program++" -port "++PortName,Options,Default),
+  Program=create_program_file(Port),
+  Cmd=build_cmd(Program++" -port "++Port,Options,Default),
   PID = spawn_link(?MODULE, init, [self(), Cmd]),
   receive
     {PID,ok}->{ok,PID};
@@ -163,7 +164,7 @@ get_packet({delim,Delim},Data)->
 
 %%---------Internal helpers----------------------
 create_program_file(PortName)->
-  Dir=code:priv_dir(fp)++"/",
+  Dir=code:priv_dir(?MODULE)++"/",
   Source=
   case os:type() of
     {unix, linux}->"eserial";
