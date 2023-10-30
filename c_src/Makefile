@@ -23,6 +23,7 @@ build: $(C_SRC_OUTPUT)
 	@chmod +x $(C_SRC_OUTPUT)
 
 $(C_SRC_OUTPUT): eserial.o
+	@mkdir -p $(INSTALL_DIR)
 	$(COMPILE_CPP) -o $@ $<
 
 eserial.o: eserial.cpp
