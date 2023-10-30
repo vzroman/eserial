@@ -14,26 +14,29 @@
   clear/1
 ]).
 
--export([init/2]).
 
-%%-------Test------------------
--export([
-  get_packet_test/0
-]).
 
 %%-------API-------------------
-open(Port,Options) when is_binary(Port)->
+open(Port, Options) when is_binary(Port)->
   open(binary_to_list( Port ), Options);
-open(Port,Options)->
-  Default=[
-    {baudrate,9600},
-    {parity,0},
-    {stopbits,1},
-    {bytesize,8}
-  ],
+open(Port, InOptions)->
+
+  Options = maps:merge(#{
+    mode => active,
+    baudrate => 9600,
+    parity => 0,
+    stopbits => 1,
+    bytesize => 8
+  }, InOptions),
+
   Program=create_program_file(Port),
-  Cmd=build_cmd(Program++" -port "++Port,Options,Default),
-  PID = spawn_link(?MODULE, init, [self(), Cmd]),
+  Cmd=build_cmd(Program++" -port "++Port,Options),
+
+  Mode = maps:get( mode, Options ),
+
+  Owner = self(),
+  PID = spawn_link(fun()-> init( Owner, Cmd, Mode ) end),
+
   receive
     {PID,ok}->{ok,PID};
     {PID,{error,Error}}->{error,Error}
@@ -74,13 +77,16 @@ recv(Port,Timeout,Type)->
 
 clear(Port)->Port!{self(),clear},ok.
 
-%%----------Implementation-------------
-init(Owner,Cmd)->
+%%----------Initialize port-------------
+init(Owner,Cmd, Mode)->
   Port=open_port({spawn,Cmd},[stream, overlapped_io, use_stdio, in, out, binary, exit_status]),
   receive
     {Port, {data, <<"OK">>}}->
       Owner!{self(),ok},
-      loop(Port,Owner,<<>>);
+      if
+        Mode =:= active -> active_loop( Port, Owner );
+        true -> passive_loop( Port, Owner, _Buffer = <<>> )
+      end;
     {Port, {data, <<"ERROR: ",Error/binary>>}}->
       port_close(Port),
       Owner!{self(),{error,Error}}
@@ -88,21 +94,36 @@ init(Owner,Cmd)->
     3000->Owner!{self(),{error,timeout}}
   end.
 
-loop(Port,Owner,Buf)->
+passive_loop(Port,Owner,Buf)->
   receive
     {Port, {exit_status, Status}} ->
       throw({port_error,Status});
     {Owner,send,Data}->
       port_command(Port,[Data]),
       Owner!{self(),ok},
-      loop(Port,Owner,Buf);
+      passive_loop(Port,Owner,Buf);
     {Owner,recv,Timeout,Type}->
       {Packet,Tail}=receive_packet(Port,Buf,Type,Timeout),
       Owner!{self(),{data,Packet}},
-      loop(Port,Owner,Tail);
+      passive_loop(Port,Owner,Tail);
     {Owner,clear}->
       wait_data(50,Port),
-      loop(Port,Owner,<<>>);
+      passive_loop(Port,Owner,<<>>);
+    {Owner,close}->
+      port_close(Port),
+      ok
+  end.
+
+active_loop(Port,Owner)->
+  receive
+    {Port, {data, Data}}->
+      Owner ! {?MODULE, data, Data};
+    {Port, {exit_status, Status}} ->
+      throw({port_error,Status});
+    {Owner,send,Data}->
+      port_command(Port,[Data]),
+      Owner!{self(),ok},
+      active_loop(Port,Owner);
     {Owner,close}->
       port_close(Port),
       ok
@@ -184,29 +205,9 @@ create_program_file(PortName)->
       ResultPath
   end.
 
-build_cmd(Program,Options,Default)->
+build_cmd(Program,Options)->
   Program++
-  " -baudrate "++integer_to_list(proplists:get_value(baudrate,Options,proplists:get_value(baudrate,Default)))++
-  " -parity "++integer_to_list(proplists:get_value(parity,Options,proplists:get_value(parity,Default)))++
-  " -stopbits "++integer_to_list(proplists:get_value(stopbits,Options,proplists:get_value(stopbits,Default)))++
-  " -bytesize "++integer_to_list(proplists:get_value(bytesize,Options,proplists:get_value(bytesize,Default))).
-
-%%----------Little testing-----------------
-get_packet_test()->
-  test_packet_length(),
-  test_packet_delim(),
-  ok.
-
-test_packet_length()->
-  {<<>>,<<>>}=get_packet({length,10},<<>>),
-  {<<>>,<<"12345">>}=get_packet({length,10},<<"12345">>),
-  {<<>>,<<"123456789">>}=get_packet({length,10},<<"123456789">>),
-  {<<"1234567891">>,<<>>}=get_packet({length,10},<<"1234567891">>),
-  {<<"1234567891">>,<<"2345">>}=get_packet({length,10},<<"12345678912345">>).
-
-test_packet_delim()->
-  {<<>>,<<>>}=get_packet({delim,<<"\r\n">>},<<>>),
-  {<<>>,<<"12345">>}=get_packet({delim,<<"\r\n">>},<<"12345">>),
-  {<<>>,<<"12345\r">>}=get_packet({delim,<<"\r\n">>},<<"12345\r">>),
-  {<<"12345\r\n">>,<<>>}=get_packet({delim,<<"\r\n">>},<<"12345\r\n">>),
-  {<<"12345\r\n">>,<<"567">>}=get_packet({delim,<<"\r\n">>},<<"12345\r\n567">>).
+  " -baudrate "++integer_to_list(maps:get(baudrate,Options))++
+  " -parity "++integer_to_list(maps:get(parity,Options))++
+  " -stopbits "++integer_to_list(maps:get(stopbits,Options))++
+  " -bytesize "++integer_to_list(maps:get(bytesize,Options)).
