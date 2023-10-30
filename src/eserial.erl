@@ -117,7 +117,7 @@ passive_loop(Port,Owner,Buf)->
 active_loop(Port,Owner)->
   receive
     {Port, {data, Data}}->
-      Owner ! {?MODULE, data, Data};
+      Owner ! {self(), data, Data};
     {Port, {exit_status, Status}} ->
       throw({port_error,Status});
     {Owner,send,Data}->
