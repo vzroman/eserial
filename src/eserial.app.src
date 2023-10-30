@@ -1,0 +1,14 @@
+{application, eserial,
+ [{description, "Erlang library for working with serial ports"},
+  {vsn, git},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
