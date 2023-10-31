@@ -15,6 +15,11 @@
 
 using namespace std;
 
+// Input file descriptor for receiving requests from erlang
+#define IN_DESC 3
+
+// Output file descriptor for sending response to erlang
+#define OUT_DESC 4
 
 int init_port(string portname, int baudRate, int parity, int stopBits, int byteSize);
 int from_to(int from,int to);
@@ -29,48 +34,53 @@ int main(int argc, char** argv) {
     int byteSize = 8;
     for (int i = 0; i < argc; i++) {
         if (strcmp("-port", argv[i]) == 0) {
-            if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined port"); return 0; }
+            if (i + 1 > argc) { reply(OUT_DESC, "ERROR: undefined port"); return 0; }
             portname = argv[i + 1];
         } else if (strcmp("-baudrate", argv[i]) == 0) {
-            if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined baudrate"); return 0; }
+            if (i + 1 > argc) { reply(OUT_DESC, "ERROR: undefined baudrate"); return 0; }
             baudRate = atoi(argv[i + 1]);
         } else if (strcmp("-parity", argv[i]) == 0) {
-            if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined parity"); return 0; }
+            if (i + 1 > argc) { reply(OUT_DESC, "ERROR: undefined parity"); return 0; }
             parity = atoi(argv[i + 1]);
         } else if (strcmp("-stopbits", argv[i]) == 0) {
-            if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined stopbits"); return 0; }
+            if (i + 1 > argc) { reply(OUT_DESC, "ERROR: undefined stopbits"); return 0; }
             stopBits = atoi(argv[i + 1]);
         } else if (strcmp("-bytesize", argv[i]) == 0) {
-            if (i + 1 > argc) { reply(STDOUT_FILENO, "ERROR: undefined bytesize"); return 0; }
+            if (i + 1 > argc) { reply(OUT_DESC, "ERROR: undefined bytesize"); return 0; }
             byteSize = atoi(argv[i + 1]);
         }
     }
+
+    printf("START PORT\n");
     //----------------Serial port init-------------------------
     int port=init_port(portname, baudRate, parity, stopBits, byteSize);
-    if (port == -1) { reply(STDOUT_FILENO, "ERROR: can not open port"); return 0; }
-    reply(STDOUT_FILENO, "OK");
+    if (port == -1) { reply(OUT_DESC, "ERROR: can not open port"); return 0; }
+    reply(OUT_DESC, "OK");
 
     //------select for erts and serial-------------------------
     fd_set readfs;
     FD_ZERO(&readfs);
     int maxfd;
-    maxfd = (STDIN_FILENO > port ? STDIN_FILENO : port) + 1;
+    maxfd = (IN_DESC > port ? IN_DESC : port) + 1;
     struct timeval Timeout;
     int result=1;
 
 
     //----------LOOP-------------------------
     while (result) {
-        FD_SET(STDIN_FILENO,&readfs);
+        FD_SET(IN_DESC,&readfs);
         FD_SET(port,&readfs);
         Timeout.tv_usec = 0;
         Timeout.tv_sec  = 2;
 
+        printf("before select\r\n");
         select(maxfd, &readfs, NULL, NULL, &Timeout);
-        if (FD_ISSET(STDIN_FILENO,&readfs)){
-            result=from_to(STDIN_FILENO,port);
+        printf("after select\r\n");
+        if (FD_ISSET(IN_DESC,&readfs)){
+            printf("send to\r\n");
+            result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
-            result=from_to(port,STDOUT_FILENO);
+            result=from_to(port,OUT_DESC);
         }
     }
     return 0;

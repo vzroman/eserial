@@ -79,7 +79,7 @@ clear(Port)->Port!{self(),clear},ok.
 
 %%----------Initialize port-------------
 init(Owner,Cmd, Mode)->
-  Port=open_port({spawn,Cmd},[stream, overlapped_io, use_stdio, in, out, binary, exit_status]),
+  Port=open_port({spawn,Cmd},[stream, overlapped_io, nouse_stdio, binary, exit_status]),
   receive
     {Port, {data, <<"OK">>}}->
       Owner!{self(),ok},
