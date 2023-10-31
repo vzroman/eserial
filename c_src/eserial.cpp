@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    printf("START PORT\n");
+    //printf("START PORT\n");
     //----------------Serial port init-------------------------
     int port=init_port(portname, baudRate, parity, stopBits, byteSize);
     if (port == -1) { reply(OUT_DESC, "ERROR: can not open port"); return 0; }
@@ -73,11 +73,11 @@ int main(int argc, char** argv) {
         Timeout.tv_usec = 0;
         Timeout.tv_sec  = 2;
 
-        printf("before select\r\n");
+        //printf("before select\r\n");
         select(maxfd, &readfs, NULL, NULL, &Timeout);
-        printf("after select\r\n");
+        //printf("after select\r\n");
         if (FD_ISSET(IN_DESC,&readfs)){
-            printf("send to\r\n");
+            //printf("send to\r\n");
             result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
             result=from_to(port,OUT_DESC);
