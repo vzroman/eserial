@@ -162,11 +162,13 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
 	default: return -1;
     }
 
-    switch (parity) {
-	case 0:tio.c_iflag |= IGNPAR; break;
-	case 1:	tio.c_cflag |= PARENB; tio.c_iflag |= INPCK | ISTRIP; break;
-	case 2: tio.c_cflag |= PARENB | PARODD;	tio.c_iflag |= INPCK | ISTRIP; break;
-    }
+    tio.c_cflag &= ~PARENB;
+    // TODO. Parity check doesn't work
+//    switch (parity) {
+//	case 0:tio.c_iflag |= IGNPAR; break;
+//	case 1:	tio.c_cflag |= PARENB; tio.c_iflag |= INPCK | ISTRIP; break;
+//	case 2: tio.c_cflag |= PARENB | PARODD;	tio.c_iflag |= INPCK | ISTRIP; break;
+//    }
 
     switch (stopBits)	{
 	case 1: break;
