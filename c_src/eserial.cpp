@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
-
+#include <iostream>
 
 using namespace std;
 
@@ -162,13 +162,23 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
 	default: return -1;
     }
 
-    tio.c_cflag &= ~PARENB;
-    // TODO. Parity check doesn't work
-//    switch (parity) {
-//	case 0:tio.c_iflag |= IGNPAR; break;
-//	case 1:	tio.c_cflag |= PARENB; tio.c_iflag |= INPCK | ISTRIP; break;
-//	case 2: tio.c_cflag |= PARENB | PARODD;	tio.c_iflag |= INPCK | ISTRIP; break;
-//    }
+    switch (parity) {
+        // No parity
+        case 0:
+            tio.c_cflag &= ~PARENB;         // Disable parity generation
+            tio.c_iflag |= IGNPAR;          // ISTRIPIgnore parity errors
+        break;
+        // Even parity
+        case 1:
+            tio.c_cflag |= PARENB;          // Enable parity generation
+            tio.c_iflag |= INPCK;           // Enable input parity check
+        break;
+        // Odd parity
+        case 2:
+            tio.c_cflag |= PARENB | PARODD; // Enable parity generation & enable odd parity
+            tio.c_iflag |= INPCK;           // Enable input parity check
+        break;
+    }
 
     switch (stopBits)	{
 	case 1: break;
