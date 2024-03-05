@@ -166,7 +166,7 @@ int init_port(string portname, int baudRate, int parity, int stopBits, int byteS
         // No parity
         case 0:
             tio.c_cflag &= ~PARENB;         // Disable parity generation
-            tio.c_iflag |= IGNPAR;          // ISTRIPIgnore parity errors
+            tio.c_iflag |= IGNPAR;          // Ignore parity errors
         break;
         // Even parity
         case 1:
