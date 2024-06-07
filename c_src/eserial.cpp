@@ -75,9 +75,7 @@ int main(int argc, char** argv) {
 
         result = select(maxfd, &readfs, NULL, NULL, &Timeout);
         if (result == -1){
-            if (errno != EINTR){
-                result = errno; break;
-            }
+            result = errno; break;
         }else if (FD_ISSET(IN_DESC,&readfs)){
             result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
