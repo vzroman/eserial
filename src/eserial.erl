@@ -112,6 +112,7 @@ passive_loop(Port,Owner,Buf)->
       port_close(Port),
       ok;
     {'DOWN', _, process, Owner, Reason} ->
+      catch port_close(Port),
       exit(Reason);
     {Port, {exit_status, Status}} ->
       exit({port_error,Status})
@@ -130,6 +131,7 @@ active_loop(Port,Owner)->
       port_close(Port),
       ok;
     {'DOWN', _, process, Owner, Reason} ->
+      catch port_close(Port),
       exit(Reason);
     {Port, {exit_status, Status}} ->
       exit({port_error,Status})
