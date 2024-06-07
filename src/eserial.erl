@@ -109,12 +109,14 @@ passive_loop(Port,Owner,Buf)->
       wait_data(50,Port),
       passive_loop(Port,Owner,<<>>);
     {Owner,close}->
+      io:format("\r\nDEBUG: close port\r\n"),
       port_close(Port),
       ok;
     {'DOWN', _, process, Owner, Reason} ->
       catch port_close(Port),
       exit(Reason);
     {Port, {exit_status, Status}} ->
+      io:format("\r\nDEBUG: port exit\r\n"),
       exit({port_error,Status})
   end.
 
