@@ -109,7 +109,7 @@ int from_to(int from,int to){
     int result = 1;
     struct timespec ts;
     while (result>0){
-        ts.tv_sec = 0;
+        ts.tv_sec = 1;
         ts.tv_nsec = 5 * 1000000;
         do {
             result = nanosleep(&ts, &ts);
