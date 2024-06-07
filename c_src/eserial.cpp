@@ -75,7 +75,9 @@ int main(int argc, char** argv) {
 
         result = select(maxfd, &readfs, NULL, NULL, &Timeout);
         if (result == -1){
-            result = errno; break;
+            if (errno != EINTR){
+                result = errno; break;
+            }
         }else if (FD_ISSET(IN_DESC,&readfs)){
             result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
@@ -85,8 +87,7 @@ int main(int argc, char** argv) {
     return result;
 }
 
-
-int from_to(int from,int to){
+int do_from_to(int from,int to){
     int result=1;
     int bytes;
     ioctl(from, FIONREAD, &bytes);
@@ -103,6 +104,23 @@ int from_to(int from,int to){
     }
     return result;
 }
+
+int from_to(int from,int to){
+    int result = 1;
+    struct timespec ts;
+    while (result>0){
+        ts.tv_sec = 0;
+        ts.tv_nsec = 5 * 1000000;
+        do {
+            result = nanosleep(&ts, &ts);
+        } while (result && errno == EINTR);
+
+        result = do_from_to( from, to );
+    }
+    return result;
+}
+
+
 
 int init_port(string portname, int baudRate, int parity, int stopBits, int byteSize){
     struct termios tio;
