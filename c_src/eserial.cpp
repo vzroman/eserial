@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
         Timeout.tv_sec  = 2;
 
         result = select(maxfd, &readfs, NULL, NULL, &Timeout);
-        printf("\r\n select resul %d\r\n", result);
+        
         if (result == -1){
             result = errno; break;
         }else if (FD_ISSET(IN_DESC,&readfs)){
@@ -89,7 +89,10 @@ int main(int argc, char** argv) {
 int do_from_to(int from,int to){
     int result=1;
     int bytes;
-    ioctl(from, FIONREAD, &bytes);
+    result = ioctl(from, FIONREAD, &bytes);
+    if (result == -1 && errno == EBADF){
+        exit(errno);
+    }
     if (bytes==0){ return 0; }
     char buf[1024];
     int length;
