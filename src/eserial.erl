@@ -82,6 +82,7 @@ init(Owner,Cmd, Mode)->
   Port=open_port({spawn,Cmd},[stream, overlapped_io, nouse_stdio, binary, exit_status]),
   receive
     {Port, {data, <<"OK">>}}->
+      erlang:monitor(process, Owner),
       Owner!{self(),ok},
       if
         Mode =:= active -> active_loop( Port, Owner );
@@ -96,8 +97,6 @@ init(Owner,Cmd, Mode)->
 
 passive_loop(Port,Owner,Buf)->
   receive
-    {Port, {exit_status, Status}} ->
-      throw({port_error,Status});
     {Owner,send,Data}->
       port_command(Port,[Data]),
       Owner!{self(),ok},
@@ -111,7 +110,11 @@ passive_loop(Port,Owner,Buf)->
       passive_loop(Port,Owner,<<>>);
     {Owner,close}->
       port_close(Port),
-      ok
+      ok;
+    {'DOWN', _, process, Owner, Reason} ->
+      exit(Reason);
+    {Port, {exit_status, Status}} ->
+      exit({port_error,Status})
   end.
 
 active_loop(Port,Owner)->
@@ -119,15 +122,17 @@ active_loop(Port,Owner)->
     {Port, {data, Data}}->
       Owner ! {self(), data, Data},
       active_loop(Port,Owner);
-    {Port, {exit_status, Status}} ->
-      throw({port_error,Status});
     {Owner,send,Data}->
       port_command(Port,[Data]),
       Owner!{self(),ok},
       active_loop(Port,Owner);
     {Owner,close}->
       port_close(Port),
-      ok
+      ok;
+    {'DOWN', _, process, Owner, Reason} ->
+      exit(Reason);
+    {Port, {exit_status, Status}} ->
+      exit({port_error,Status})
   end.
 
 receive_packet(Port,Buf,Type,Timeout)->
