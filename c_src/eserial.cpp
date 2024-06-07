@@ -63,27 +63,27 @@ int main(int argc, char** argv) {
     int maxfd;
     maxfd = (IN_DESC > port ? IN_DESC : port) + 1;
     struct timeval Timeout;
-    int result=1;
+    int result;
 
 
     //----------LOOP-------------------------
-    while (result) {
+    while (1) {
         FD_SET(IN_DESC,&readfs);
         FD_SET(port,&readfs);
         Timeout.tv_usec = 0;
         Timeout.tv_sec  = 2;
 
-        //printf("before select\r\n");
-        select(maxfd, &readfs, NULL, NULL, &Timeout);
-        //printf("after select\r\n");
-        if (FD_ISSET(IN_DESC,&readfs)){
-            //printf("send to\r\n");
+        result = select(maxfd, &readfs, NULL, NULL, &Timeout);
+        if (result == -1 && errno != EINTR){
+            result = errno;
+            break;
+        }else if (FD_ISSET(IN_DESC,&readfs)){
             result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
             result=from_to(port,OUT_DESC);
         }
     }
-    return 0;
+    return result;
 }
 
 
