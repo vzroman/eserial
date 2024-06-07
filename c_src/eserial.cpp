@@ -90,9 +90,6 @@ int do_from_to(int from,int to){
     int result=1;
     int bytes;
     result = ioctl(from, FIONREAD, &bytes);
-    if (result == -1 && errno == EBADF){
-        exit(errno);
-    }
     if (bytes==0){ return 0; }
     char buf[1024];
     int length;
@@ -108,9 +105,10 @@ int do_from_to(int from,int to){
 }
 
 int from_to(int from,int to){
-    int result = 1;
+    int result;
     struct timespec ts;
-    while (result>0){
+    int checkInput = from == IN_DESC;
+    do{
         ts.tv_sec = 0;
         ts.tv_nsec = 20 * 1000000;
         do {
@@ -118,7 +116,12 @@ int from_to(int from,int to){
         } while (result && errno == EINTR);
 
         result = do_from_to( from, to );
-    }
+        if (checkInput && result == 0){
+            exit( EBADF );
+        }
+        checkInput = 0;
+
+    }while (result>0);
     return result;
 }
 
