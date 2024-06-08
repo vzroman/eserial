@@ -110,7 +110,7 @@ int from_to(int from,int to){
     int checkInput = from == IN_DESC;
     do{
         ts.tv_sec = 0;
-        ts.tv_nsec = 5 * 1000000;
+        ts.tv_nsec = 1 * 1000000;
         do {
             result = nanosleep(&ts, &ts);
         } while (result && errno == EINTR);
