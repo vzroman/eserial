@@ -63,34 +63,33 @@ int main(int argc, char** argv) {
     int maxfd;
     maxfd = (IN_DESC > port ? IN_DESC : port) + 1;
     struct timeval Timeout;
-    int result=1;
+    int result;
 
 
     //----------LOOP-------------------------
-    while (result) {
+    while (1) {
         FD_SET(IN_DESC,&readfs);
         FD_SET(port,&readfs);
         Timeout.tv_usec = 0;
         Timeout.tv_sec  = 2;
 
-        //printf("before select\r\n");
-        select(maxfd, &readfs, NULL, NULL, &Timeout);
-        //printf("after select\r\n");
-        if (FD_ISSET(IN_DESC,&readfs)){
-            //printf("send to\r\n");
+        result = select(maxfd, &readfs, NULL, NULL, &Timeout);
+        
+        if (result == -1){
+            result = errno; break;
+        }else if (FD_ISSET(IN_DESC,&readfs)){
             result=from_to(IN_DESC,port);
         }else if (FD_ISSET(port,&readfs)){
             result=from_to(port,OUT_DESC);
         }
     }
-    return 0;
+    return result;
 }
 
-
-int from_to(int from,int to){
+int do_from_to(int from,int to){
     int result=1;
     int bytes;
-    ioctl(from, FIONREAD, &bytes);
+    result = ioctl(from, FIONREAD, &bytes);
     if (bytes==0){ return 0; }
     char buf[1024];
     int length;
@@ -104,6 +103,29 @@ int from_to(int from,int to){
     }
     return result;
 }
+
+int from_to(int from,int to){
+    int result;
+    struct timespec ts;
+    int checkInput = from == IN_DESC;
+    do{
+        ts.tv_sec = 0;
+        ts.tv_nsec = 1 * 1000000;
+        do {
+            result = nanosleep(&ts, &ts);
+        } while (result && errno == EINTR);
+
+        result = do_from_to( from, to );
+        if (checkInput && result == 0){
+            exit( EBADF );
+        }
+        checkInput = 0;
+
+    }while (result>0);
+    return result;
+}
+
+
 
 int init_port(string portname, int baudRate, int parity, int stopBits, int byteSize){
     struct termios tio;
